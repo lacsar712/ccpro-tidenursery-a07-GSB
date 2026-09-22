@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.hatchery import Hatchery
 from app.models.pond import Pond
 from app.models.user import User
+from app.quarantine import apply_pond_status
 from app.schemas.pond import PondCreate, PondUpdate, PondOut
 
 router = APIRouter(prefix="/api/ponds", tags=["ponds"])
@@ -79,6 +80,11 @@ def update_pond(
         hatchery = db.query(Hatchery).filter(Hatchery.id == data["hatchery_id"]).first()
         if not hatchery:
             raise HTTPException(status_code=400, detail="育苗场不存在")
+    # 状态变更与卷宗解除判定共用 apply_pond_status：
+    # 有未解除卷宗时禁止直接改回在养（409）
+    new_status = data.pop("status", None)
+    if new_status is not None:
+        apply_pond_status(db, item, new_status)
     for k, v in data.items():
         setattr(item, k, v)
     try:

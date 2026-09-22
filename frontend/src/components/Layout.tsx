@@ -5,6 +5,7 @@ const links = [
   { to: '/', label: '看板', end: true },
   { to: '/hatcheries', label: '育苗场' },
   { to: '/ponds', label: '育苗塘' },
+  { to: '/quarantine-dossiers', label: '检疫卷宗' },
   { to: '/water-samples', label: '水质样' },
   { to: '/feed-events', label: '投喂事件' },
 ]

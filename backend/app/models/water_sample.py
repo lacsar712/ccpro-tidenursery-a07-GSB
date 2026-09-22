@@ -12,6 +12,9 @@ class WaterSample(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     pond_id: Mapped[int] = mapped_column(ForeignKey("ponds.id"), nullable=False, index=True)
+    dossier_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("quarantine_dossiers.id"), nullable=True, index=True
+    )
     sampled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     temp_c: Mapped[float] = mapped_column(Float, nullable=False)
     salinity_ppt: Mapped[float] = mapped_column(Float, nullable=False)
@@ -20,3 +23,6 @@ class WaterSample(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     pond: Mapped["Pond"] = relationship("Pond", back_populates="water_samples")
+    dossier: Mapped[Optional["QuarantineDossier"]] = relationship(
+        "QuarantineDossier", back_populates="water_samples"
+    )

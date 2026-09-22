@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { Pond, WaterSample } from '../types'
+import type { Pond, QuarantineDossier, WaterSample } from '../types'
 
 function nowLocal() {
   const d = new Date()
@@ -21,16 +21,19 @@ const empty = {
 export default function WaterSamples() {
   const [ponds, setPonds] = useState<Pond[]>([])
   const [rows, setRows] = useState<WaterSample[]>([])
+  const [openDossiers, setOpenDossiers] = useState<QuarantineDossier[]>([])
   const [form, setForm] = useState(empty)
   const [error, setError] = useState('')
 
   async function load() {
-    const [ps, ws] = await Promise.all([
+    const [ps, ws, ds] = await Promise.all([
       api<Pond[]>('/api/ponds'),
       api<WaterSample[]>('/api/water-samples'),
+      api<QuarantineDossier[]>('/api/quarantine-dossiers?open=true'),
     ])
     setPonds(ps)
     setRows(ws)
+    setOpenDossiers(ds)
     if (!form.pondId && ps[0]) {
       setForm((f) => ({ ...f, pondId: ps[0].id }))
     }
@@ -48,6 +51,7 @@ export default function WaterSamples() {
         method: 'POST',
         body: JSON.stringify({
           ...form,
+          dossierId: dossierFor(form.pondId)?.id ?? null,
           sampledAt: new Date(form.sampledAt).toISOString(),
         }),
       })
@@ -73,11 +77,16 @@ export default function WaterSamples() {
     return p ? `${p.pondCode} (${p.species})` : `#${id}`
   }
 
+  const dossierFor = (pondId: number) => openDossiers.find((d) => d.pondId === pondId)
+  const activeDossier = dossierFor(form.pondId)
+
   return (
     <div>
       <header className="page-header">
         <h1>水质采样</h1>
-        <p className="muted">校验：溶解氧 doMgL &gt; 0，pH ∈ [6, 9]</p>
+        <p className="muted">
+          校验：溶解氧 doMgL &gt; 0，pH ∈ [6, 9]；有未解除检疫卷宗的塘口，水质样必须挂到该卷宗
+        </p>
       </header>
       {error && <div className="error">{error}</div>}
 
@@ -96,6 +105,12 @@ export default function WaterSamples() {
             ))}
           </select>
         </label>
+        {activeDossier && (
+          <label>
+            检疫卷宗
+            <input value={`#${activeDossier.id}（未解除，自动关联）`} disabled />
+          </label>
+        )}
         <label>
           采样时间
           <input
@@ -168,6 +183,7 @@ export default function WaterSamples() {
               <th>盐度</th>
               <th>DO</th>
               <th>pH</th>
+              <th>卷宗</th>
               <th>备注</th>
               <th />
             </tr>
@@ -182,6 +198,7 @@ export default function WaterSamples() {
                 <td>{r.salinityPpt}</td>
                 <td>{r.doMgL}</td>
                 <td>{r.ph}</td>
+                <td>{r.dossierId ? `#${r.dossierId}` : '—'}</td>
                 <td>{r.notes || '—'}</td>
                 <td>
                   <button className="btn ghost" onClick={() => remove(r.id)}>

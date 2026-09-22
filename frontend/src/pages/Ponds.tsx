@@ -64,7 +64,9 @@ export default function Ponds() {
     <div>
       <header className="page-header">
         <h1>育苗塘</h1>
-        <p className="muted">同场塘口号唯一；状态：stocked / dry / quarantine</p>
+        <p className="muted">
+          同场塘口号唯一；状态：stocked / dry / quarantine；有未解除检疫卷宗的塘口须先在检疫卷宗页解除，禁止直接改回在养
+        </p>
       </header>
       {error && <div className="error">{error}</div>}
 

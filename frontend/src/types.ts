@@ -24,12 +24,24 @@ export type Pond = {
 export type WaterSample = {
   id: number
   pondId: number
+  dossierId?: number | null
   sampledAt: string
   tempC: number
   salinityPpt: number
   doMgL: number
   ph: number
   notes?: string | null
+}
+
+export type QuarantineDossier = {
+  id: number
+  pondId: number
+  openedAt: string
+  releasedAt?: string | null
+  conclusion: string
+  sampleCount: number
+  latestDoMgL?: number | null
+  releasable: boolean
 }
 
 export type FeedEvent = {

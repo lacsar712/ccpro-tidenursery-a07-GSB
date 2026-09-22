@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class WaterSampleCreate(BaseModel):
     pond_id: int = Field(..., alias="pondId")
+    dossier_id: Optional[int] = Field(None, alias="dossierId")
     sampled_at: datetime = Field(..., alias="sampledAt")
     temp_c: float = Field(..., alias="tempC")
     salinity_ppt: float = Field(..., alias="salinityPpt")
@@ -35,6 +36,7 @@ class WaterSampleOut(BaseModel):
 
     id: int
     pond_id: int = Field(serialization_alias="pondId")
+    dossier_id: Optional[int] = Field(serialization_alias="dossierId")
     sampled_at: datetime = Field(serialization_alias="sampledAt")
     temp_c: float = Field(serialization_alias="tempC")
     salinity_ppt: float = Field(serialization_alias="salinityPpt")
