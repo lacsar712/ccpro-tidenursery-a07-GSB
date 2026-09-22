@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models.pond import Pond
 from app.models.user import User
 from app.models.water_sample import WaterSample
+from app.quarantine import get_open_case
 from app.schemas.water_sample import WaterSampleCreate, WaterSampleOut
 
 router = APIRouter(prefix="/api/water-samples", tags=["water-samples"])
@@ -34,6 +35,20 @@ def create_sample(
     pond = db.query(Pond).filter(Pond.id == payload.pond_id).first()
     if not pond:
         raise HTTPException(status_code=400, detail="塘口不存在")
+    open_case = get_open_case(db, pond.id)
+    if open_case is not None:
+        if payload.case_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"该塘口存在未解除检疫卷宗（#{open_case.id}），水质样必须填写卷宗编号 caseId",
+            )
+        if payload.case_id != open_case.id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"卷宗编号与该塘口当前未解除卷宗（#{open_case.id}）不一致",
+            )
+    elif payload.case_id is not None:
+        raise HTTPException(status_code=400, detail="该塘口当前没有未解除的检疫卷宗，不能关联卷宗编号")
     item = WaterSample(
         pond_id=payload.pond_id,
         sampled_at=payload.sampled_at,
@@ -42,6 +57,7 @@ def create_sample(
         do_mg_l=payload.do_mg_l,
         ph=payload.ph,
         notes=payload.notes,
+        case_id=payload.case_id,
     )
     db.add(item)
     db.commit()

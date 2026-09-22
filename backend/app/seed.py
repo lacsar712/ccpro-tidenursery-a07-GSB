@@ -5,6 +5,7 @@ from app.database import SessionLocal
 from app.models.feed_event import FeedEvent
 from app.models.hatchery import Hatchery
 from app.models.pond import Pond
+from app.models.quarantine_case import QuarantineCase
 from app.models.user import User
 from app.models.water_sample import WaterSample
 
@@ -77,6 +78,17 @@ def seed() -> None:
             db.flush()
 
             now = datetime.now(timezone.utc)
+
+            # 隔离塘 A-02 的检疫卷宗：已立案、未解除；解除前该塘禁止改回在养
+            case_a02 = QuarantineCase(
+                pond_id=p2.id,
+                opened_at=now - timedelta(days=1),
+                released_at=None,
+                summary="疑似桃拉病毒携带，隔离观察；待卷宗水质样达标后办理解除",
+            )
+            db.add(case_a02)
+            db.flush()
+
             db.add_all(
                 [
                     WaterSample(
@@ -96,6 +108,7 @@ def seed() -> None:
                         do_mg_l=5.4,
                         ph=7.9,
                         notes="隔离塘加强监测",
+                        case_id=case_a02.id,
                     ),
                     WaterSample(
                         pond_id=p3.id,

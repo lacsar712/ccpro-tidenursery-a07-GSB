@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.hatchery import Hatchery
 from app.models.pond import Pond
 from app.models.user import User
+from app.quarantine import evaluate_release, get_open_case
 from app.schemas.pond import PondCreate, PondUpdate, PondOut
 
 router = APIRouter(prefix="/api/ponds", tags=["ponds"])
@@ -79,6 +80,18 @@ def update_pond(
         hatchery = db.query(Hatchery).filter(Hatchery.id == data["hatchery_id"]).first()
         if not hatchery:
             raise HTTPException(status_code=400, detail="育苗场不存在")
+    # 未解除卷宗的塘口禁止直接改回在养：必须走卷宗解除接口（共用同一套解除判定）
+    if data.get("status") == "stocked" and item.status != "stocked":
+        open_case = get_open_case(db, item.id)
+        if open_case is not None:
+            evaluation = evaluate_release(db, open_case)
+            detail = (
+                f"该塘口存在未解除检疫卷宗（#{open_case.id}），禁止直接改为在养；"
+                f"请通过 POST /api/quarantine-cases/{open_case.id}/release 办理解除"
+            )
+            if not evaluation.ok and evaluation.reason:
+                detail += f"。当前解除判定未通过：{evaluation.reason}"
+            raise HTTPException(status_code=409, detail=detail)
     for k, v in data.items():
         setattr(item, k, v)
     try:

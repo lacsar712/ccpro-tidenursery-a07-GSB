@@ -18,5 +18,12 @@ class WaterSample(Base):
     do_mg_l: Mapped[float] = mapped_column(Float, nullable=False)
     ph: Mapped[float] = mapped_column(Float, nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # 卷宗编号：塘口存在未解除检疫卷宗时，新增水质样必须挂到该卷宗
+    case_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("quarantine_cases.id"), nullable=True, index=True
+    )
 
     pond: Mapped["Pond"] = relationship("Pond", back_populates="water_samples")
+    quarantine_case: Mapped[Optional["QuarantineCase"]] = relationship(
+        "QuarantineCase", back_populates="water_samples"
+    )

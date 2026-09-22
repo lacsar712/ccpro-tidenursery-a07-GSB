@@ -43,14 +43,31 @@ docker compose up --build
 
 1. **Auth**：JWT 登录（OAuth2 Password），`/api/auth/login`、`/api/auth/me`
 2. **Hatchery 育苗场**：`name`、`seawaterSource`、`notes`
-3. **Pond 育苗塘**：`hatcheryId`、`pondCode`、`species`、`volumeM3`、`status(stocked|dry|quarantine)`；同场 `pondCode` 唯一
-4. **WaterSample 水质样**：`pondId`、`sampledAt`、`tempC`、`salinityPpt`、`doMgL`、`ph`、`notes`；`doMgL > 0` 且 `ph ∈ [6,9]`，否则返回 **400**
-5. **FeedEvent 投喂**：`pondId`、`fedAt`、`feedType`、`amountKg`、`operatorName`
-6. **Dashboard**：塘总数、quarantine 数、近 24h 采样数、近 7 日投喂总量 kg
+3. **Pond 育苗塘**：`hatcheryId`、`pondCode`、`species`、`volumeM3`、`status(stocked|dry|quarantine)`；同场 `pondCode` 唯一；有未解除卷宗的塘口禁止直接改回 `stocked`（返回 **409**）
+4. **QuarantineCase 检疫解除卷宗**：`pondId`、`openedAt`（立案时刻）、`releasedAt`（解除时刻，可空）、`summary`（结论摘要）；仅隔离塘可立案，同塘同时只许一份未解除卷宗（重复立案返回 **409**）
+5. **WaterSample 水质样**：`pondId`、`sampledAt`、`tempC`、`salinityPpt`、`doMgL`、`ph`、`notes`、`caseId`（卷宗编号）；`doMgL > 0` 且 `ph ∈ [6,9]`，否则返回 **400**；塘口有未解除卷宗时新增水样必须挂该卷宗编号，否则返回 **400**
+6. **FeedEvent 投喂**：`pondId`、`fedAt`、`feedType`、`amountKg`、`operatorName`
+7. **Dashboard**：塘总数、quarantine 数、近 24h 采样数、近 7 日投喂总量 kg
+
+## 检疫解除流程
+
+隔离塘（`status=quarantine`）要改回在养，必须凭检疫卷宗办理解除，不能直接把状态改回 `stocked`：
+
+1. **立案**：`POST /api/quarantine-cases`，仅隔离塘可立案；同塘同时只许一份未解除卷宗。
+2. **挂样监测**：立案后该塘新增水质样必须带 `caseId` 挂到卷宗（前端会自动带上），漏挂或挂错返回 **400**。
+3. **解除**：`POST /api/quarantine-cases/{id}/release`，判定通过才放行——
+   - 卷宗下水质样 **≥ 3 份**；
+   - 且**最近一份**（按 `sampledAt`）溶解氧 `doMgL` **≥ 5 mg/L**；
+   - 任一不满足返回 **409**，`releasedAt` 保持为空。
+4. 解除成功：写入 `releasedAt`，塘口状态自动改为 `stocked`，可填写/更新结论摘要 `summary`。
+
+塘口改状态接口（`PUT /api/ponds/{id}`）与解除接口共用同一套解除判定（`app/quarantine.py` 的 `evaluate_release`）：卷宗未解除时直接改 `stocked` 一律 **409**，即使条件已满足也必须走解除接口，避免"随手改回在养"。
 
 ## 前端页面
 
-Login · Dashboard · Hatcheries · Ponds · WaterSamples · FeedEvents
+Login · Dashboard · Hatcheries · Ponds · QuarantineCases（检疫卷宗） · WaterSamples · FeedEvents
+
+种子数据中的 A-02 塘（东港潮汐一号场）处于隔离状态，且已有一份未解除的检疫卷宗（含 1 份挂卷水质样），可直接演示"采样挂卷 → 达标解除 → 自动改回在养"全流程。
 
 ## 本地开发（可选）
 

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { Pond, WaterSample } from '../types'
+import type { Pond, QuarantineCase, WaterSample } from '../types'
 
 function nowLocal() {
   const d = new Date()
@@ -21,16 +21,19 @@ const empty = {
 export default function WaterSamples() {
   const [ponds, setPonds] = useState<Pond[]>([])
   const [rows, setRows] = useState<WaterSample[]>([])
+  const [openCases, setOpenCases] = useState<QuarantineCase[]>([])
   const [form, setForm] = useState(empty)
   const [error, setError] = useState('')
 
   async function load() {
-    const [ps, ws] = await Promise.all([
+    const [ps, ws, cs] = await Promise.all([
       api<Pond[]>('/api/ponds'),
       api<WaterSample[]>('/api/water-samples'),
+      api<QuarantineCase[]>('/api/quarantine-cases?openOnly=true'),
     ])
     setPonds(ps)
     setRows(ws)
+    setOpenCases(cs)
     if (!form.pondId && ps[0]) {
       setForm((f) => ({ ...f, pondId: ps[0].id }))
     }
@@ -43,12 +46,15 @@ export default function WaterSamples() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+    // 塘口有未解除卷宗时，水质样自动挂到该卷宗编号（后端同样强制校验）
+    const openCase = openCases.find((c) => c.pondId === form.pondId)
     try {
       await api('/api/water-samples', {
         method: 'POST',
         body: JSON.stringify({
           ...form,
           sampledAt: new Date(form.sampledAt).toISOString(),
+          caseId: openCase ? openCase.id : undefined,
         }),
       })
       setForm((f) => ({ ...empty, pondId: f.pondId, sampledAt: nowLocal() }))
@@ -73,11 +79,15 @@ export default function WaterSamples() {
     return p ? `${p.pondCode} (${p.species})` : `#${id}`
   }
 
+  const selectedCase = openCases.find((c) => c.pondId === form.pondId)
+
   return (
     <div>
       <header className="page-header">
         <h1>水质采样</h1>
-        <p className="muted">校验：溶解氧 doMgL &gt; 0，pH ∈ [6, 9]</p>
+        <p className="muted">
+          校验：溶解氧 doMgL &gt; 0，pH ∈ [6, 9]；有未解除检疫卷宗的塘口，水样自动挂到该卷宗编号
+        </p>
       </header>
       {error && <div className="error">{error}</div>}
 
@@ -95,6 +105,9 @@ export default function WaterSamples() {
               </option>
             ))}
           </select>
+          {selectedCase && (
+            <span className="hint">未解除卷宗 #{selectedCase.id}，本样将挂到该卷宗</span>
+          )}
         </label>
         <label>
           采样时间
@@ -168,6 +181,7 @@ export default function WaterSamples() {
               <th>盐度</th>
               <th>DO</th>
               <th>pH</th>
+              <th>卷宗</th>
               <th>备注</th>
               <th />
             </tr>
@@ -182,6 +196,7 @@ export default function WaterSamples() {
                 <td>{r.salinityPpt}</td>
                 <td>{r.doMgL}</td>
                 <td>{r.ph}</td>
+                <td>{r.caseId ? `#${r.caseId}` : '—'}</td>
                 <td>{r.notes || '—'}</td>
                 <td>
                   <button className="btn ghost" onClick={() => remove(r.id)}>

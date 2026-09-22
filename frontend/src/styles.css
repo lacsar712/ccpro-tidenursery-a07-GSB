@@ -130,6 +130,15 @@ a {
   margin: 12px 0;
 }
 
+.notice {
+  background: #e3f7f4;
+  color: #1a7a6c;
+  border: 1px solid #b7e6dd;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+
 .panel,
 .table-wrap,
 .stat-card {

@@ -30,6 +30,16 @@ export type WaterSample = {
   doMgL: number
   ph: number
   notes?: string | null
+  caseId?: number | null
+}
+
+export type QuarantineCase = {
+  id: number
+  pondId: number
+  openedAt: string
+  releasedAt?: string | null
+  summary?: string | null
+  sampleCount: number
 }
 
 export type FeedEvent = {

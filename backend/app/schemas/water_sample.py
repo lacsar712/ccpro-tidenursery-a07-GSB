@@ -12,6 +12,7 @@ class WaterSampleCreate(BaseModel):
     do_mg_l: float = Field(..., alias="doMgL")
     ph: float
     notes: Optional[str] = None
+    case_id: Optional[int] = Field(None, alias="caseId")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -41,3 +42,4 @@ class WaterSampleOut(BaseModel):
     do_mg_l: float = Field(serialization_alias="doMgL")
     ph: float
     notes: Optional[str] = None
+    case_id: Optional[int] = Field(serialization_alias="caseId")
